@@ -2,18 +2,18 @@
 set -x
 set -eo pipefail
 
-if ![-x "$(command -v psql)"]; then
+if ! [ -x "$(command -v psql)" ]; then
     echo >&2 "Error: psql is not installed."
     exit 1
 fi
 
-if ![-x "$(command -v sqlx)"]; then
-    echo >&2 "Error: sqlx is not installed."
-    echo >&2 "Use"
-    echo >&2 "cargo instal sqlx-cli --no-default-features --features rustls,postgres"
-    echo >&2 "to install it."
-    exit 1
-fi
+#if ! [ -x "$(command -v sqlx)" ]; then
+ #   echo >&2 "Error: sqlx is not installed."
+  #  echo >&2 "Use"
+   # echo >&2 "cargo instal --version='~0.6' sqlx-cli --no-default-features --features rustls,postgres"
+    #echo >&2 "to install it."
+    #exit 1
+#fi
 
 
 
@@ -23,22 +23,36 @@ DB_NAME="${POSTGRES_DB:=newsletter}"
 DB_PORT="${POSTGRES_PORT:=5432}"
 DB_HOST="${POSTGRES_HOST:=localhost}"
 
-docker run \
-    -e POSTGRES_USER=${DB_USER} \
-    -e POSTGRES_PASSWORD=${DB_PASSWORD} \
-    -e POSTGRES_DB=${DB_NAME} \
-    -p "${DB_PORT}:5432" \
-    -d postgres \
-    postgres -N 1000
-
-export PGPASSWORD="${DB_PASSWORD}"
+if [[ -z "${SKIP_DOCKER}" ]]
+then
+ #   RUNNING_POSTGRES_CONTAINER=$(docker ps --filter 'name=postgres' --format '{{.ID}}')
+  #  if [[ -n $RUNNING_POSTGRES_CONTAINER ]]; then
+   #     echo >&2 "there is a postgres container already running, kill it with"
+    #    echo >&2 "      docker kill ${RUNNING_POSTGRES_CONTAINER}"
+     #   exit 1
+    #fi
+    docker run \
+        -e POSTGRES_USER=${DB_USER} \
+        -e POSTGRES_PASSWORD=${DB_PASSWORD} \
+        -e POSTGRES_DB=${DB_NAME} \
+        -p "${DB_PORT}:5432" \
+        -d postgres\
+        postgres -N 1000
+        #--name "postgres_$(date '+%s')"\
+fi 
+export PGPASSWORD="${DB_PASSWORD}" 
 until psql -h "${DB_HOST}" -U "${DB_USER}" -p "${DB_PORT}" -d "postgres" -c '\q'; do
     >&2 echo "Postgres is still unavailable - sleeping"
     sleep 1
 done
 
->&2 echo "Postgres is up and running on post ${DB_PORT}"
+>&2 echo "Postgres is up and running on post ${DB_PORT} - running migrations now!"
 
 DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
 export DATABASE_URL
-sql database create
+
+sqlx database create --database-url DATABASE_URL
+
+sqlx migrate run --database-url DATABASE_URL
+
+#>&2 echo "Postgres har has been migrated, ready to go!"
