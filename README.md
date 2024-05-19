@@ -9,6 +9,7 @@ Whe will need [Rust](https://www.rust-lang.org/) and [docker](https://www.docker
 ### PSQL
 ```
 sudo apt update
+
 sudo apt install postgresql-client
 ```
 ### SQLX
@@ -16,6 +17,7 @@ sudo apt install postgresql-client
 cargo install --version='~0.6' sqlx-cli --no-default-features --features rustls,prostgres
 ```
 ## Run Project
+### Local
 ```
 cd {DIR_OF_INSTALL}/zero2prod
 ./init_db
@@ -28,6 +30,12 @@ cargo run
 
 \\ Test Project
 cargo test
+```
+### Docker 
+```
+docker build --tag zero2prod --file Dockerfile .
+
+docker run -p 8000:8000 zero2prod
 ```
 # Credit
 [Offical Github](https://github.com/LukeMathWalker/zero-to-production)
